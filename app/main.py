@@ -1,10 +1,24 @@
 import asyncio
 import time
+from typing import Any, Awaitable
 
 
 from iot.devices import HueLightDevice, SmartSpeakerDevice, SmartToiletDevice
 from iot.message import Message, MessageType
 from iot.service import IOTService
+
+
+async def run_sequence(*functions: Awaitable[Any]) -> None:
+    print("=====RUNNING PROGRAM SEQUENCE======")
+    for function in functions:
+        await function
+    print("=====END OF PROGRAM SEQUENCE======")
+
+
+async def run_parallel(*functions: Awaitable[Any]) -> None:
+    print("=====RUNNING PROGRAM PARALLEL======")
+    await asyncio.gather(*functions)
+    print("=====END OF PROGRAM PARALLEL======")
 
 
 async def main() -> None:
@@ -16,54 +30,62 @@ async def main() -> None:
     speaker = SmartSpeakerDevice()
     toilet = SmartToiletDevice()
 
-    hue_light_registering = service.register_device(hue_light)
-    speaker_registering = service.register_device(speaker)
-    toilet_id_registering = service.register_device(toilet)
-
     hue_light_id, speaker_id, toilet_id = await asyncio.gather(
-        hue_light_registering, speaker_registering, toilet_id_registering
+        service.register_device(hue_light),
+        service.register_device(speaker),
+        service.register_device(toilet),
     )
 
     # create a few programs
     # wake up programms
-    speaker_tasks = service.create_tasks(
-        [
-            Message(speaker_id, MessageType.SWITCH_ON),
-            Message(
-                speaker_id,
-                MessageType.PLAY_SONG,
-                "Rick Astley - Never Gonna Give You Up",
+    await run_parallel(
+        service.run_program(
+            [
+                Message(hue_light_id, MessageType.SWITCH_ON),
+            ]
+        ),
+        run_sequence(
+            service.run_program(
+                [
+                    Message(speaker_id, MessageType.SWITCH_ON),
+                ]
             ),
-        ]
-    )
-    hue_light_tasks = service.create_tasks(
-        [
-            Message(hue_light_id, MessageType.SWITCH_ON),
-        ]
-    )
-    await service.run_parallel(
-        service.run_sequence(*speaker_tasks), *hue_light_tasks
+            service.run_program(
+                [
+                    Message(
+                        speaker_id,
+                        MessageType.PLAY_SONG,
+                        "Rick Astley - Never Gonna Give You Up",
+                    ),
+                ]
+            ),
+        ),
     )
 
     # sleep programms
-    hue_light_tasks = service.create_tasks(
-        [
-            Message(hue_light_id, MessageType.SWITCH_OFF),
-        ]
-    )
-    speaker_tasks = service.create_tasks(
-        [
-            Message(speaker_id, MessageType.SWITCH_OFF),
-        ]
-    )
-    toilet_tasks = service.create_tasks(
-        [
-            Message(toilet_id, MessageType.FLUSH),
-            Message(toilet_id, MessageType.CLEAN),
-        ]
-    )
-    await service.run_parallel(
-        service.run_sequence(*toilet_tasks), *hue_light_tasks, *speaker_tasks
+    await run_parallel(
+        run_sequence(
+            service.run_program(
+                [
+                    Message(toilet_id, MessageType.FLUSH),
+                ]
+            ),
+            service.run_program(
+                [
+                    Message(toilet_id, MessageType.CLEAN),
+                ]
+            ),
+        ),
+        service.run_program(
+            [
+                Message(hue_light_id, MessageType.SWITCH_OFF),
+            ]
+        ),
+        service.run_program(
+            [
+                Message(speaker_id, MessageType.SWITCH_OFF),
+            ]
+        ),
     )
 
     # unregistering

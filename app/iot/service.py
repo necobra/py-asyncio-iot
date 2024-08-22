@@ -1,7 +1,7 @@
 import asyncio
 import random
 import string
-from typing import Protocol, Any, Awaitable, List
+from typing import Protocol
 
 from .message import Message, MessageType
 
@@ -43,24 +43,11 @@ class IOTService:
     def get_device(self, device_id: str) -> Device:
         return self.devices[device_id]
 
-    def create_tasks(self, program: list[Message]) -> list[Awaitable[Any]]:
-        tasks = []
-        for msg in program:
-            tasks += [self.send_msg(msg)]
-        return tasks
-
-    @staticmethod
-    async def run_sequence(*functions: Awaitable[Any]) -> None:
-        print("=====RUNNING PROGRAM SEQUENCE======")
-        for function in functions:
-            await function
-        print("=====END OF PROGRAM SEQUENCE======")
-
-    @staticmethod
-    async def run_parallel(*functions: Awaitable[Any]) -> None:
-        print("=====RUNNING PROGRAM PARALLEL======")
-        await asyncio.gather(*functions)
-        print("=====END OF PROGRAM PARALLEL======")
+    async def run_program(self, program: list[Message]) -> None:
+        print("=====RUNNING PROGRAM======")
+        tasks = [self.send_msg(msg) for msg in program]
+        await asyncio.gather(*tasks)
+        print("=====END OF PROGRAM======")
 
     async def send_msg(self, msg: Message) -> None:
         await self.devices[msg.device_id].send_message(msg.msg_type, msg.data)
