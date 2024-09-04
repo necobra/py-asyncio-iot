@@ -39,16 +39,12 @@ async def main() -> None:
     # create a few programs
     # wake up programms
     await run_parallel(
-        service.run_program(
-            [
-                Message(hue_light_id, MessageType.SWITCH_ON),
-            ]
+        service.send_msg(
+            Message(hue_light_id, MessageType.SWITCH_ON),
         ),
         run_sequence(
-            service.run_program(
-                [
-                    Message(speaker_id, MessageType.SWITCH_ON),
-                ]
+            service.send_msg(
+                Message(speaker_id, MessageType.SWITCH_ON),
             ),
             service.run_program(
                 [
@@ -65,26 +61,18 @@ async def main() -> None:
     # sleep programms
     await run_parallel(
         run_sequence(
-            service.run_program(
-                [
-                    Message(toilet_id, MessageType.FLUSH),
-                ]
+            service.send_msg(
+                Message(toilet_id, MessageType.FLUSH),
             ),
-            service.run_program(
-                [
-                    Message(toilet_id, MessageType.CLEAN),
-                ]
+            service.send_msg(
+                Message(toilet_id, MessageType.CLEAN),
             ),
         ),
-        service.run_program(
-            [
-                Message(hue_light_id, MessageType.SWITCH_OFF),
-            ]
+        service.send_msg(
+            Message(hue_light_id, MessageType.SWITCH_OFF),
         ),
-        service.run_program(
-            [
-                Message(speaker_id, MessageType.SWITCH_OFF),
-            ]
+        service.send_msg(
+            Message(speaker_id, MessageType.SWITCH_OFF),
         ),
     )
 
